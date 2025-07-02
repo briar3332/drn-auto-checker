@@ -3,23 +3,21 @@ const express = require('express');
 const session = require('express-session');
 const bcrypt = require('bcryptjs');
 const path = require('path');
+
 const app = express();
 
-// Use ONLY the injected Railway port
-const PORT = process.env.PORT;
+// Use Railway's injected PORT, fallback for local dev
+const PORT = process.env.PORT || 3000;
 
-if (!PORT) {
-    console.error("❌ PORT is not defined. Railway must inject it.");
-    process.exit(1);
-}
-
+// Hash password once when server starts
 const PASSWORD_HASH = bcrypt.hashSync(process.env.APP_PASSWORD, 10);
 
-// Middleware
+// Middlewares
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.set('view engine', 'ejs');
 
+// Session config
 app.use(session({
     secret: process.env.SESSION_SECRET,
     resave: false,
@@ -58,7 +56,7 @@ app.get('/logout', (req, res) => {
 app.get('/', isAuthenticated, (req, res) => {
     res.render('dashboard', {
         emailStats: { new: 24, total: 24, today: 24 },
-        lastCheck: '6/30/2025, 9:30:04 AM'
+        lastCheck: new Date().toLocaleString()
     });
 });
 
