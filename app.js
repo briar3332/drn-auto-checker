@@ -5,9 +5,17 @@ const bcrypt = require('bcryptjs');
 const path = require('path');
 const app = express();
 
-const PORT = process.env.PORT || 3000;
+// Use ONLY the injected Railway port
+const PORT = process.env.PORT;
+
+if (!PORT) {
+    console.error("❌ PORT is not defined. Railway must inject it.");
+    process.exit(1);
+}
+
 const PASSWORD_HASH = bcrypt.hashSync(process.env.APP_PASSWORD, 10);
 
+// Middleware
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.set('view engine', 'ejs');
@@ -18,6 +26,7 @@ app.use(session({
     saveUninitialized: false
 }));
 
+// Auth middleware
 function isAuthenticated(req, res, next) {
     if (req.session && req.session.loggedIn) {
         return next();
@@ -25,6 +34,7 @@ function isAuthenticated(req, res, next) {
     res.redirect('/login');
 }
 
+// Routes
 app.get('/login', (req, res) => {
     res.render('login', { error: null });
 });
@@ -52,6 +62,7 @@ app.get('/', isAuthenticated, (req, res) => {
     });
 });
 
+// Start server
 app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+    console.log(`✅ Server running on port ${PORT}`);
 });
