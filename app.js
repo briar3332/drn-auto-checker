@@ -1,66 +1,52 @@
-require('dotenv').config();
-const express = require('express');
-const session = require('express-session');
-const bcrypt = require('bcryptjs');
-const path = require('path');
+require("dotenv").config();
+const express = require("express");
+const session = require("express-session");
+const bcrypt = require("bcryptjs");
+const path = require("path");
 
 const app = express();
+const PORT = process.env.PORT || 8080;
+const PASSWORD = process.env.PASSWORD;
 
-// Use Railway's injected PORT, fallback for local dev
-const PORT = process.env.PORT || 3000;
+app.set("view engine", "ejs");
+app.set("views", path.join(__dirname, "views"));
 
-// Hash password once when server starts
-const PASSWORD_HASH = bcrypt.hashSync(process.env.APP_PASSWORD, 10);
-
-// Middlewares
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, 'public')));
-app.set('view engine', 'ejs');
-
-// Session config
-app.use(session({
-    secret: process.env.SESSION_SECRET,
+app.use(
+  session({
+    secret: "your-secret-key",
     resave: false,
-    saveUninitialized: false
-}));
+    saveUninitialized: true,
+  })
+);
 
-// Auth middleware
-function isAuthenticated(req, res, next) {
-    if (req.session && req.session.loggedIn) {
-        return next();
-    }
-    res.redirect('/login');
-}
-
-// Routes
-app.get('/login', (req, res) => {
-    res.render('login', { error: null });
+// ✅ Route for root "/" to serve login view
+app.get("/", (req, res) => {
+  res.redirect("/login");
 });
 
-app.post('/login', (req, res) => {
-    const { password } = req.body;
-    if (bcrypt.compareSync(password, PASSWORD_HASH)) {
-        req.session.loggedIn = true;
-        res.redirect('/');
-    } else {
-        res.render('login', { error: 'Invalid password' });
-    }
+app.get("/login", (req, res) => {
+  res.render("login", { error: null });
 });
 
-app.get('/logout', (req, res) => {
-    req.session.destroy(() => {
-        res.redirect('/login');
-    });
+app.post("/login", async (req, res) => {
+  const { password } = req.body;
+  const match = await bcrypt.compare(password, PASSWORD);
+  if (match) {
+    req.session.authenticated = true;
+    return res.redirect("/dashboard");
+  } else {
+    return res.render("login", { error: "Incorrect password" });
+  }
 });
 
-app.get('/', isAuthenticated, (req, res) => {
-    res.render('dashboard', {
-        emailStats: { new: 24, total: 24, today: 24 },
-        lastCheck: new Date().toLocaleString()
-    });
+app.get("/dashboard", (req, res) => {
+  if (!req.session.authenticated) {
+    return res.redirect("/login");
+  }
+  res.render("dashboard");
 });
 
-// Start server
 app.listen(PORT, () => {
-    console.log(`✅ Server running on port ${PORT}`);
+  console.log(`✅ Server running on port ${PORT}`);
 });
